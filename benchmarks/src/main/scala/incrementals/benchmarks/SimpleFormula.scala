@@ -11,16 +11,16 @@ import org.openjdk.jmh.infra.Blackhole
 @BenchmarkMode(Array(Mode.AverageTime))
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
-class SimpleFormula {
+class SimpleFormula:
   var inc: Incremental = _
 
   var a: InputNode[Double] = _
   var i = 1.0
 
   @Setup
-  def prepare(bh: Blackhole): Unit = { 
+  def prepare(bh: Blackhole): Unit = 
     val (inc, (a, b, c, root)) =
-      Incremental {
+      Incremental:
         val a = "a" @: input(2.0)
         val b = "b" @: input(9.2)
         val c = "c" @: input(4.3)
@@ -28,20 +28,16 @@ class SimpleFormula {
         val root = "root" @: (a, b, disc).map3((a, b, disc) => (-b + disc) / 2 * a)
 
         (a, b, c, root)
-      }
 
     this.a = a 
     this.inc = inc
 
     root.addObserver(i => bh.consume(i)) 
-  }
 
 
 
   @Benchmark
-  def bench() = { 
+  def bench() = 
     i += 0.3
     a.set(i)
     inc.observe()
-  }
-}

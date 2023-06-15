@@ -34,20 +34,17 @@ class Incremental private (private val nodes: ArrayBuffer[Node[?]] = ArrayBuffer
 end Incremental
 
 object Incremental:
-  extension [A, B](t: (Node[A], Node[B])) {
+  extension [A, B](t: (Node[A], Node[B]))
     inline def map2[Z](f: (A, B) => Z)(using Incremental): Node[Z] =
       new Map2(f, t._1, t._2)
-  }
 
-  extension [A, B, C](t: (Node[A], Node[B], Node[C])) {
+  extension [A, B, C](t: (Node[A], Node[B], Node[C]))
     inline def map3[Z](f: (A, B, C) => Z)(using Incremental): Node[Z] =
       new Map3(f, t._1, t._2, t._3)
-  }
 
-  def input[A](a: A)(using b: Incremental, eq: CanEqual[A, A]): InputNode[A] = {
+  def input[A](a: A)(using b: Incremental, eq: CanEqual[A, A]): InputNode[A] =
     val node = new InputNode[A](a)
     node
-  }
 
   def apply[A](init: Incremental ?=> A): (Incremental, A) =
     given b: Incremental = new Incremental

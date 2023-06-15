@@ -17,7 +17,7 @@ lazy val core = project
       // "org.typelevel" %% "cats-laws" % "2.9.0" % Test,
       "org.scalacheck" %% "scalacheck" % "1.17.0" % Test
     ),
-    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-new-syntax")
+    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-indent")
   )
 
 lazy val benchmarks = project
@@ -27,5 +27,5 @@ lazy val benchmarks = project
   .dependsOn(core)
   .settings(
     scalaVersion := scalaV,
-    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-new-syntax")
+    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-indent")
   )
