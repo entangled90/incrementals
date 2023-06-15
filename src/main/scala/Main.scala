@@ -1,14 +1,23 @@
-import cats.implicits._
+import Incremental.*
 
-import MemoT.*
+object Main {
+  @main def run =
+    val (inc, (a, b, c, root)) = Incremental {
+      val a = "a" @: input(2.0)
+      val b = "b" @: input(9.2)
+      val c = "c" @: input(4.3)
+      val disc = "disc" @: (a, b, c).map3((a, b, c) => Math.sqrt(b * b - 4 * a * c))
+      val root = "root" @: (a, b, disc).map3((a, b, disc) => (-b + disc) / 2 * a)
 
-@main def main: Unit =
-  val (x, y, z, result) = Graph.example
+      (a, b, c, root)
+    }
 
-  println(s"${result.result}")
+    root.addObserver(r => println(s"Root is $r"))
 
-  println("x = 3")
-  x.set(3)
-  println(s"${result.result}")
+    println(inc)
+    a.set(1.0)
+    println("Observe now")
+    inc.observe()
+    println(inc)
 
-// for i <- 1 to 10 do s"i = $i: ${run(Memo.program.memo)(1)}"
+}

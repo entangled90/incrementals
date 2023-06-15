@@ -1,5 +1,0 @@
-package incrementals
-
-trait Observer {
-  
-}
