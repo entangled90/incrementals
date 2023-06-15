@@ -1,11 +1,13 @@
-val scala3Version = "3.3.0"
+val scalaV = "3.3.0"
 
-lazy val root = project
-  .in(file("."))
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
+lazy val core = project
+  .in(file("core"))
   .settings(
     name := "incrementals",
     version := "0.1.0-SNAPSHOT",
-    scalaVersion := scala3Version,
+    scalaVersion := scalaV,
     libraryDependencies ++= Seq(
       // "org.typelevel" %% "cats-core" % "2.9.0",
       // "org.typelevel" %% "cats-free" % "2.9.0",
@@ -15,5 +17,15 @@ lazy val root = project
       // "org.typelevel" %% "cats-laws" % "2.9.0" % Test,
       "org.scalacheck" %% "scalacheck" % "1.17.0" % Test
     ),
-    scalacOptions ++= Seq("-language:strictEquality")
+    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-new-syntax")
+  )
+
+lazy val benchmarks = project
+  .in(file("benchmarks"))
+  .enablePlugins(JmhPlugin)
+  .aggregate(core)
+  .dependsOn(core)
+  .settings(
+    scalaVersion := scalaV,
+    scalacOptions ++= Seq("-language:strictEquality", "-rewrite", "-new-syntax")
   )
