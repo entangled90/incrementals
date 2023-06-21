@@ -21,7 +21,11 @@ lazy val core =
     )
     .settings(sharedSettings)
     .jsSettings(
-      scalaJSUseMainModuleInitializer := true
+      scalaJSUseMainModuleInitializer := true,
+      mainClass := Some("incrementals.web.run"),
+      libraryDependencies ++= Seq(
+        "org.scala-js" %%% "scalajs-dom" % "2.6.0"
+      )
     )
 
 lazy val coreJVM = core.jvm

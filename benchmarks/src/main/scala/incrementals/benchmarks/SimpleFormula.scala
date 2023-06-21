@@ -25,11 +25,11 @@ class SimpleFormula:
   def prepare(bh: Blackhole): Unit = 
     val (inc, (a, b, c, root)) =
       Incremental:
-        val a = "a" @: input(2.0)
-        val b = "b" @: input(9.2)
-        val c = "c" @: input(4.3)
-        val disc = "disc" @: (a, b, c).map3((a, b, c) => Math.sqrt(b * b - 4 * a * c))
-        val root = "root" @: (a, b, disc).map3((a, b, disc) => (-b + disc) / 2 * a)
+        val a = input(2.0)
+        val b = input(9.2)
+        val c = input(4.3)
+        val disc = (a, b, c).map3((a, b, c) => Math.sqrt(b * b - 4 * a * c))
+        val root = (a, b, disc).map3((a, b, disc) => (-b + disc) / 2 * a)
 
         (a, b, c, root)
 
