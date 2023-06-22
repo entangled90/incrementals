@@ -15,22 +15,30 @@ lazy val core =
       version := "0.1.0-SNAPSHOT",
       libraryDependencies ++= Seq(
         "org.scalameta" %%% "munit" % "1.0.0-M8" % Test,
-//        "org.scalameta" %%% "munit-scalacheck" % "1.0.0-M8" % Test,
-//        "org.scalacheck" %%% "scalacheck" % "1.17.0" % Test
+        //        "org.scalameta" %%% "munit-scalacheck" % "1.0.0-M8" % Test,
+        //        "org.scalacheck" %%% "scalacheck" % "1.17.0" % Test
       ),
     )
     .settings(sharedSettings)
-    .jsSettings(
-      scalaJSUseMainModuleInitializer := true,
-      mainClass := Some("incrementals.web.run"),
-      libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scalajs-dom" % "2.6.0"
-      )
-    )
+
 
 lazy val coreJVM = core.jvm
 
 lazy val coreNative = core.native
+
+lazy val coreJS = core.js
+
+lazy val web = project.in(file("web"))
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(coreJS)
+  .settings(
+    scalaJSUseMainModuleInitializer := true,
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % "2.6.0",
+      "com.lihaoyi" %%% "scalatags" % "0.12.0"
+    ))
+  .settings(sharedSettings)
+
 
 lazy val benchmarks = project
   .in(file("benchmarks"))

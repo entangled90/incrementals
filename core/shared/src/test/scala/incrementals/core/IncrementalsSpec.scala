@@ -7,9 +7,9 @@ import munit.*
 class IncrementalsSpec extends munit.FunSuite:
 
   private def basicIncremental = Incremental:
-    val a = "a" @: input(10)
-    val b = "b" @: input(20)
-    val c = "ab" @: (a, b).map2(_ + _)
+    val a =  input(10)
+    val b = input(20)
+    val c = (a, b).map2(_ + _)
     (a, b, c)
 
   test("Initial Value is correct"):
@@ -34,12 +34,12 @@ class IncrementalsSpec extends munit.FunSuite:
 
   test("Computation with many layers produces correct output"):
     val (inc, (a,b,c,d,e,f)) = Incremental:
-      val a = "a" @: input(10)
-      val b = "b" @: input(10)
-      val c = "c" @: input(10)
-      val d = "ab" @: (a,b).map2(_ + _)
-      val e = "bc" @: (b,c).map2(_ + _)
-      val f = "abbc" @: (d,e).map2(_ + _)
+      val a = input(10)
+      val b = input(10)
+      val c = input(10)
+      val d = (a,b).map2(_ + _)
+      val e = (b,c).map2(_ + _)
+      val f = (d,e).map2(_ + _)
       (a,b,c,d,e,f)
 
     f.addObserver(_ => ())

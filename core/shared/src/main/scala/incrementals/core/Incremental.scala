@@ -21,7 +21,7 @@ class Incremental private(
                            var nodes: Array[Node[?]],
                            var locked: Boolean = false):
 
-  var updatedInputs: ArrayBuffer[InputNode[?]] = _
+  var updatedInputs: ArrayBuffer[Node.Input[?]] = _
 
   def register(n: Node[?]): Unit = nodes :+= n
 
@@ -44,29 +44,26 @@ object Incremental:
 
 
   extension[A] (t: Node[A])
-    inline def map[Z](f: A => Z)(using Incremental): Node[Z] = new Map(f, t)
+    inline def map[Z](f: A => Z)(using Incremental): Node[Z] = new Node.Computed[Z](IArray(t)):
+      override def computeValue(): Z = f(t.value)
 
   extension[A, B] (t: (Node[A], Node[B]))
     inline def map2[Z](f: (A, B) => Z)(using Incremental): Node[Z] =
-      val (a, b) = (t._1, t._2)
-      new ComputationNode[Z](IArray(a, b)):
-        override def computeValue(): Z = f(a.value, b.value)
+      new Node.Computed[Z](IArray(t._1, t._2)):
+        override def computeValue(): Z = f(t._1.value, t._2.value)
 
   extension[A, B, C] (t: (Node[A], Node[B], Node[C]))
     inline def map3[Z](f: (A, B, C) => Z)(using Incremental): Node[Z] =
-      val (a, b, c) = (t._1, t._2, t._3)
-      new ComputationNode[Z](IArray(a, b, c)):
-        override def computeValue(): Z = f(a.value, b.value, c.value)
+      new Node.Computed[Z](IArray(t._1, t._2, t._3)):
+        override def computeValue(): Z = f(t._1.value, t._2.value, t._3.value)
 
   extension[A, B, C, D] (t: (Node[A], Node[B], Node[C], Node[D]))
     inline def map3[Z](f: (A, B, C, D) => Z)(using Incremental): Node[Z] =
-      val (a, b, c, d) = (t._1, t._2, t._3, t._4)
-      new ComputationNode[Z](IArray(a, b, c)):
-        override def computeValue(): Z = f(a.value, b.value, c.value, d.value)
+      new Node.Computed[Z](IArray(t._1, t._2, t._3, t._4)):
+        override def computeValue(): Z = f(t._1.value, t._2.value, t._3.value, t._4.value)
 
-  def input[A](a: A)(using b: Incremental, eq: CanEqual[A, A]): InputNode[A] =
-    val node = new InputNode[A](a)
-    node
+  inline def input[A](a: A)(using b: Incremental, eq: CanEqual[A, A]): Node.Input[A] = new Node.Input[A](a)
+
 
   def apply[A](init: Incremental ?=> A): (Incremental, A) =
     given inc: Incremental = new Incremental(Array.empty)
@@ -79,21 +76,22 @@ object Incremental:
 trait Observer[A]:
   def observe(a: A): Unit
 
-sealed abstract class Node[A](protected val inputs: IArray[Node[?]])(using inc: Incremental):
+sealed class Node[A](protected val inputs: IArray[Node[?]])(using inc: Incremental):
 
-  var observers: Set[Observer[A]] = Set.empty
+  private var observers: Set[Observer[A]] = Set.empty
 
   // index is the height of the node in graph
   // input nodes have height = -1
-  var internalObservers: Array[MutSet[Node[?]]] = Array.empty
+  private var subscribedNodes: Array[MutSet[Node[?]]] = Array.empty
 
   val height: Int = if inputs.isEmpty then Node.inputHeight else inputs.view.map(_.height).max + 1
 
   inc.register(this)
 
-  def value: A
+  protected var v: A = _
 
-  /** Stabilize nodes up to height == upToHeight */
+  inline final def value: A = v
+
   def stabilize(): Unit =
     for obs <- observers do obs.observe(value)
 
@@ -108,7 +106,7 @@ sealed abstract class Node[A](protected val inputs: IArray[Node[?]])(using inc: 
     if !necessary then unsubscribeFromInputs()
 
 
-  def necessary: Boolean = observers.nonEmpty || internalObservers.nonEmpty
+  inline def necessary: Boolean = observers.nonEmpty || subscribedNodes.nonEmpty
 
   override def toString: String =
     s"${getClass.getSimpleName}(value=$value, height=$height, necessary=$necessary)"
@@ -117,73 +115,67 @@ sealed abstract class Node[A](protected val inputs: IArray[Node[?]])(using inc: 
   private def subscribeToInputs(): Unit =
     if necessary then
       inputs.foreach { inputNode =>
-        inputNode.internalObservers.lift(height) match
-          case None => inputNode.internalObservers :+= MutSet(this)
+        inputNode.subscribedNodes.lift(height) match
+          case None => inputNode.subscribedNodes :+= MutSet(this)
           case Some(value) => value.add(this)
 
         inputNode.subscribeToInputs()
       }
 
-
   private def unsubscribeFromInputs(): Unit =
     if !necessary then
       inputs.foreach { inputNode =>
-        inputNode.internalObservers.lift(height).foreach { value =>
+        inputNode.subscribedNodes.lift(height).foreach { value =>
           value.remove(this)
           if value.isEmpty then
-            assert(height == inputNode.internalObservers.length)
-            inputNode.internalObservers = inputNode.internalObservers.dropRight(1)
+            assert(height == inputNode.subscribedNodes.length)
+            inputNode.subscribedNodes = inputNode.subscribedNodes.dropRight(1)
         }
         inputNode.unsubscribeFromInputs()
       }
 
-//trait IndexedNode[Idx, A](using Incremental):
-//  self : Node[Idx => Option[Node[A]]] =>
-//
-//end IndexedNode
-
-
 object Node:
   inline def inputHeight: Int = -1
+
+  class Input[A](_v: A)(using
+                        inc: Incremental,
+                        eq: CanEqual[A, A]
+  ) extends Node[A](IArray.empty):
+
+    v = _v
+
+    def set(a: A): Any =
+      if a != _v then
+        v = a
+        if necessary then
+          inc.updatedInputs.addOne(this)
+
+  sealed abstract class Computed[A](inputs: IArray[Node[?]])(using inc: Incremental
+  ) extends Node[A](inputs):
+
+    v = computeValue()
+
+    def computeValue(): A
+
+    override def stabilize(): Unit =
+      if necessary then
+        v = computeValue()
+        super.stabilize()
+
+
+  end Computed
+
+//  trait IndexedNode[Idx, A]:
+//    def get(idx: Idx): Option[Node[A]]
+//
+//
+//  end IndexedNode
+//
+//  class MapNode[Idx, A](using Incremental) extends IndexedNode[Idx, A]:
+//    self: Node[Map[Idx, A]] =>
+//
+//    override def get(idx: Idx): Option[Node[A]] = value.get(idx).map(a => new Node[A](IArray(this)))
+
 end Node
 
-final class InputNode[A](private var _v: A)(using
-                                            inc: Incremental,
-                                            eq: CanEqual[A, A]
-) extends Node[A](IArray.empty):
-  inline def value: A = _v
-
-  def set(a: A): Any =
-    if a != _v then
-      _v = a
-      if necessary then
-        inc.updatedInputs.addOne(this)
-
-sealed abstract class ComputationNode[A](inputs: IArray[Node[?]])(using inc: Incremental
-) extends Node[A](inputs):
-
-
-  var value: A = computeValue()
-
-  def computeValue(): A
-
-  override def stabilize(): Unit =
-    if  necessary then
-      value = computeValue()
-      super.stabilize()
-
-
-end ComputationNode
-
-final class Map[A, B](f: A => B, a: Node[A])(using Incremental)
-  extends ComputationNode[B](IArray(a)):
-  def computeValue(): B = f(a.value)
-
-final class Map2[A, B, Z](
-                           f: (A, B) => Z,
-                           a: Node[A],
-                           b: Node[B]
-                         )(using Incremental)
-  extends ComputationNode[Z](IArray(a, b)):
-  def computeValue(): Z = f(a.value, b.value)
 

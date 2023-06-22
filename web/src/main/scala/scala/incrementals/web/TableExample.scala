@@ -1,7 +1,8 @@
 package incrementals.web
 
 import org.scalajs.dom
-import org.scalajs.dom.{Element, Event, EventInit, document, window}
+import org.scalajs.dom.{Element, Event, EventInit, UIEvent, document, window}
+import scalatags.JsDom.all.*
 
 import scala.scalajs.js.annotation.{JSExportTopLevel, JSGlobal}
 import incrementals.core.*
@@ -16,24 +17,20 @@ import scala.concurrent.duration.*
 
 @main def run(): Unit =
   val (inc, nodes) = Incremental:
-    for i <- 1 to 1e4.toInt yield (i, input(Random.nextDouble()*1e2))
+    for i <- 1 to 1e4.toInt yield (i, new Node.Input(Random.nextDouble() * 1e2))
 
   val root = document.getElementById("root")
 
   val table = document.getElementById("table")
 
   def updateAll(): Unit =
-    for (_,node) <- nodes do
-      node.set(node.value + (Random.nextDouble()*2 - 1.0) * 1e-2 +1e-3)
+    for (_, node) <- nodes do
+      node.set(node.value + (Random.nextDouble() * 2 - 1.0) * 1e-2 + 1e-3)
     inc.stabilize()
 
   window.setInterval(() => updateAll(), 1000)
 
-  val elems =
-    for (id, node) <- nodes
-    yield (id, create(id, table, node))
-
-
+  val elems = for (id, node) <- nodes yield (id, create(id, table, node))
 
 def create(id: Int, table: Element, node: Node[Double]): Unit =
   val row: Element = document.createElement("tr")
@@ -51,17 +48,34 @@ def create(id: Int, table: Element, node: Node[Double]): Unit =
       node.addObserver(observer)
     else
       node.removeObserver(observer)
-  } , true)
+  }, true)
 
   row.appendChild(name)
   row.appendChild(value)
   table.appendChild(row)
 
+
+//def createV2(idx: Int, table: Element, node: Node[Double]): Unit =
+//  table.appendChild(
+//    tr(
+//      td(
+//        idx.toString
+//      ),
+//      td(id := s"row-$id-value", attr("contentvisibilityautostatechange") := { () =>
+//        val observer: Observer[Double] = v => value.innerHTML = f"$v%.2f"
+//        if evt.skipped then
+//          node.addObserver(observer)
+//        else
+//          node.removeObserver(observer)
+//      }),
+//      id := s"row-$idx")
+//      .render
+//  )
 trait ContentVisibilityAutoStateChangeInit extends EventInit:
   def skipped: js.UndefOr[Boolean] = js.undefined
 
 @js.native
 @JSGlobal
-class ContentVisibilityAutoStateChangeEvent(typeArg: String, init: js.UndefOr[ContentVisibilityAutoStateChangeInit]) extends Event(typeArg, init){
+class ContentVisibilityAutoStateChangeEvent(typeArg: String, init: js.UndefOr[ContentVisibilityAutoStateChangeInit]) extends Event(typeArg, init) {
   def skipped: Boolean = js.native
 }

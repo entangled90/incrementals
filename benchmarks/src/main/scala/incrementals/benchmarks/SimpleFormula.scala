@@ -17,7 +17,7 @@ import org.openjdk.jmh.infra.Blackhole
 class SimpleFormula:
   var inc: Incremental = _
 
-  var a: InputNode[Double] = _
+  var a: Node.Input[Double] = _
   var i = 1.0
   var j = 1.0
 
